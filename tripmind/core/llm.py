@@ -929,3 +929,25 @@ def get_llm_provider(provider_name: Optional[str] = None) -> BaseLLMProvider:
         return MockProvider()
     else:
         return MockProvider()
+
+
+class LLMClient:
+    """Convenience wrapper around BaseLLMProvider providing helper methods for Level 2."""
+
+    def __init__(self, provider: Optional[Any] = None):
+        if isinstance(provider, BaseLLMProvider):
+            self.provider = provider
+        elif isinstance(provider, str):
+            self.provider = get_llm_provider(provider)
+        else:
+            self.provider = get_llm_provider()
+
+    def call_fast(self, prompt: str, system_instruction: str = "", max_tokens: int = 800) -> str:
+        """Executes a lightweight, single-turn completion."""
+        messages: List[Dict[str, Any]] = []
+        if system_instruction:
+            messages.append({"role": "system", "content": system_instruction})
+        messages.append({"role": "user", "content": prompt})
+        response = self.provider.generate_turn(messages=messages, tools=[])
+        return response.content or ""
+

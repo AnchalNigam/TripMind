@@ -60,7 +60,7 @@ def list_available_tools():
 
 @router.post("/planner/plan", response_model=TripPlanResponse)
 def generate_trip_plan(request: PlannerRequest):
-    """Execute the multi-turn ReAct planning agent on a user query."""
+    """Execute the multi-turn ReAct planning agent on a user query (Level 1)."""
     try:
         provider = get_llm_provider(request.preferred_provider)
         logger.info(f"User Choosen LLM provider - ({provider})")
@@ -71,3 +71,27 @@ def generate_trip_plan(request: PlannerRequest):
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Planning execution error: {str(e)}")
+
+
+# ---------------------------------------------------------------------------
+# API v2: Level 2 Plan-and-Solve Engine
+# ---------------------------------------------------------------------------
+router_v2 = APIRouter(prefix="/api/v2")
+
+
+@router_v2.post("/planner/plan", response_model=TripPlanResponse)
+def generate_trip_plan_v2(request: PlannerRequest):
+    """Execute the Level 2 Plan-and-Solve Hierarchical Agent on a user query."""
+    try:
+        from tripmind.v2.engine import PlanAndSolveEngine
+        provider = get_llm_provider(request.preferred_provider)
+        logger.info(f"V2 Plan-and-Solve invoked with LLM provider - ({provider})")
+        engine = PlanAndSolveEngine(provider=provider)
+        plan = engine.plan(request.user_query)
+        return plan
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logger.exception("V2 Planning execution error")
+        raise HTTPException(status_code=500, detail=f"V2 Planning execution error: {str(e)}")
+

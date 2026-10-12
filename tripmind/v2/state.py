@@ -1,0 +1,168 @@
+"""Typed Working Memory Blackboard & Execution State for Level 2 (Plan-and-Solve).
+
+AGENTIC AI CONCEPT — The Blackboard Pattern & State Contracts:
+1. In Level 1 (ReAct), the agent maintained working memory as an unstructured list of
+   chat messages (system, user, assistant tool_calls, tool outputs). Raw JSON strings
+   were dumped into memory, bloating context past 35 KB and triggering HTTP 413 Payload Too Large.
+2. In Level 2 (Plan-and-Solve), the agent decouples reasoning from memory storage.
+   All workers (Staging, Stays, Activities, Transit, Auditor, Critic) read from and write to
+   a typed Blackboard state (`WorkingMemoryState`).
+3. Budget Caps and Hard Constraints are LOCKED upon ingestion and cannot be hallucinated
+   or mutated across turns.
+"""
+
+from typing import List, Dict, Optional, Literal, Any
+from pydantic import BaseModel, Field
+
+from tripmind.schemas.itinerary import AgentTraceStep, DayPlan, TripPlanResponse
+from tripmind.schemas.tools import (
+    RegionInfo,
+    AccommodationItem,
+    ActivityItem,
+    RouteResult,
+    BudgetBreakdownResult,
+)
+
+
+TaskStatus = Literal["pending", "running", "completed", "failed", "skipped"]
+
+
+class TaskStep(BaseModel):
+    """Represents a single step in the upfront Plan-and-Solve Task DAG."""
+    task_id: str
+    name: str
+    description: str
+    dependencies: List[str] = Field(default_factory=list)
+    status: TaskStatus = "pending"
+    result_summary: Optional[str] = None
+    error: Optional[str] = None
+
+
+class DayRegionStage(BaseModel):
+    """Spatial-temporal partition for a single day of the trip."""
+    day_number: int
+    region: str
+    title_theme: str = Field(..., description="E.g. 'Arrival & Dal Lake Relaxation' or 'Snow Panorama'")
+    is_transit_day: bool = False
+    transit_from: Optional[str] = None
+    transit_to: Optional[str] = None
+    pace_notes: str = ""
+
+
+class ParsedConstraints(BaseModel):
+    """Locked user goals and non-negotiable constraints extracted at ingestion."""
+    destination: str
+    month: str
+    duration_days: int = 5
+    duration_nights: int = 4
+    traveler_profile: str = "Couple"
+    budget_cap_inr: float = 80000.0
+    exclude_adventure: bool = True
+    pace: str = "relaxed"
+    special_interests: List[str] = Field(default_factory=lambda: ["scenic", "culinary"])
+
+
+class CuratorDaySelection(BaseModel):
+    """Curation mapping produced by the Curator LLM (100 tokens).
+
+    Instead of re-typing full hotel and activity objects with 20 fields each,
+    the Curator LLM emits ONLY identifiers/names to pin verified objects.
+    """
+    day_number: int
+    stay_name: str
+    activity_names: List[str]
+    transit_route_key: Optional[str] = None
+    day_title: str
+    pace_notes: str
+
+
+class CuratorSelectionPlan(BaseModel):
+    """The lightweight day-by-day mapping schema."""
+    trip_title: str
+    days: List[CuratorDaySelection]
+    synthesis_rationale: str
+
+
+class WorkingMemoryState(BaseModel):
+    """The central Blackboard state shared across all Level 2 agents and workers."""
+    user_query: str
+    constraints: ParsedConstraints
+    tasks: Dict[str, TaskStep] = Field(default_factory=dict)
+    
+    # Sourced domain facts (populated by isolated worker agents)
+    accessible_regions: List[RegionInfo] = Field(default_factory=list)
+    safety_advisories: List[str] = Field(default_factory=list)
+    day_stages: List[DayRegionStage] = Field(default_factory=list)
+    
+    stays_by_region: Dict[str, List[AccommodationItem]] = Field(default_factory=dict)
+    selected_stay_by_region: Dict[str, AccommodationItem] = Field(default_factory=dict)
+    
+    activities_by_region: Dict[str, List[ActivityItem]] = Field(default_factory=dict)
+    transit_routes: Dict[str, RouteResult] = Field(default_factory=dict)
+    
+    # Financial and critique state
+    financial_audit: Optional[BudgetBreakdownResult] = None
+    critic_passed: bool = False
+    critic_notes: List[str] = Field(default_factory=list)
+    replan_count: int = 0
+    constraint_relaxation_applied: bool = False
+    
+    # Curation and final compilation
+    curator_plan: Optional[CuratorSelectionPlan] = None
+    final_response: Optional[TripPlanResponse] = None
+    
+    # Observability & Trace audit
+    execution_trace: List[AgentTraceStep] = Field(default_factory=list)
+    milestone_logs: List[Dict[str, Any]] = Field(default_factory=list)
+
+    def log_milestone(self, milestone: str, status: str, details: str) -> None:
+        """Records milestone progression for frontend trace observability."""
+        self.milestone_logs.append({
+            "milestone": milestone,
+            "status": status,
+            "details": details,
+        })
+
+    def add_trace_step(
+        self,
+        thought: str,
+        tool_name: Optional[str] = None,
+        tool_input: Optional[Dict[str, Any]] = None,
+        observation: Optional[str] = None,
+    ) -> None:
+        """Appends an explainable trace step."""
+        step_number = len(self.execution_trace) + 1
+        self.execution_trace.append(
+            AgentTraceStep(
+                step_number=step_number,
+                thought=thought,
+                tool_name=tool_name,
+                tool_input=tool_input,
+                observation=observation,
+            )
+        )
+
+    def is_task_ready(self, task_id: str) -> bool:
+        """Checks if all dependencies for a task are completed."""
+        task = self.tasks.get(task_id)
+        if not task or task.status != "pending":
+            return False
+        for dep in task.dependencies:
+            dep_task = self.tasks.get(dep)
+            if not dep_task or dep_task.status != "completed":
+                return False
+        return True
+
+    def mark_task_running(self, task_id: str) -> None:
+        if task_id in self.tasks:
+            self.tasks[task_id].status = "running"
+
+    def mark_task_completed(self, task_id: str, summary: str = "") -> None:
+        if task_id in self.tasks:
+            self.tasks[task_id].status = "completed"
+            self.tasks[task_id].result_summary = summary
+
+    def mark_task_failed(self, task_id: str, error: str) -> None:
+        if task_id in self.tasks:
+            self.tasks[task_id].status = "failed"
+            self.tasks[task_id].error = error

@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from tripmind.config import settings
-from tripmind.api.routes import router
+from tripmind.api.routes import router, router_v2
 
 logging.basicConfig(
     level=logging.INFO,
@@ -13,8 +13,8 @@ logging.basicConfig(
 
 app = FastAPI(
     title="TripMind 🏔️ — Autonomous Adaptive Trip Planner",
-    description="Level 1: Multi-Turn Reactive Tool-Calling Engine (ReAct)",
-    version="0.1.0",
+    description="Level 1: ReAct Engine | Level 2: Plan-and-Solve Engine",
+    version="0.2.0",
 )
 
 # Enable CORS for frontend dashboard or external clients
@@ -30,6 +30,7 @@ import os
 from fastapi.staticfiles import StaticFiles
 
 app.include_router(router)
+app.include_router(router_v2)
 
 # Mount React Frontend if built
 frontend_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")

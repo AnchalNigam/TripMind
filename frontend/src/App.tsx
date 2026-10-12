@@ -39,6 +39,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<TripPlanResponse | null>(null);
   const [provider, setProvider] = useState<'mock' | 'gemini' | 'groq'>('mock');
+  const [engineLevel, setEngineLevel] = useState<'v1' | 'v2'>('v2');
   const [activeTab, setActiveTab] = useState<'itinerary' | 'trace' | 'budget'>('itinerary');
 
   const handlePlan = async (queryText: string) => {
@@ -46,7 +47,8 @@ export function App() {
     setError(null);
 
     try {
-      const response = await fetch('/api/v1/planner/plan', {
+      const endpoint = engineLevel === 'v2' ? '/api/v2/planner/plan' : '/api/v1/planner/plan';
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -87,7 +89,7 @@ export function App() {
           <div className="flex items-center gap-3">
             <span className="text-3xl">🏔️</span>
             <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-2">
-              TripMind <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-mono font-bold border border-indigo-500/30">V1 ReAct Engine</span>
+              TripMind <span className={`text-xs px-2.5 py-1 rounded-full font-mono font-bold border ${engineLevel === 'v2' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'}`}>{engineLevel === 'v2' ? '🧠 Level 2: Plan-and-Solve' : '⚡ Level 1: ReAct Engine'}</span>
             </h1>
           </div>
           <p className="text-sm text-slate-400">
@@ -145,29 +147,58 @@ export function App() {
               ) : (
                 <>
                   <Send className="w-4 h-4" />
-                  <span>Execute ReAct Loop</span>
+                  <span>{engineLevel === 'v2' ? 'Execute Plan-and-Solve' : 'Execute ReAct Loop'}</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* Controls: Provider Selector + Quick Benchmarks */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-800/80">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-semibold flex items-center gap-1">
-              <Brain className="w-3.5 h-3.5 text-indigo-400" />
-              <span>LLM Engine:</span>
-            </span>
-            <select
-              value={provider}
-              onChange={(e) => setProvider(e.target.value as 'mock' | 'gemini' | 'groq')}
-              className="bg-slate-950 border border-slate-700 hover:border-slate-600 text-xs rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium cursor-pointer"
-            >
-              <option value="mock">⚡ Mock Replay (Instant, Deterministic)</option>
-              <option value="gemini">✨ Google Gemini Flash (Live AI)</option>
-              <option value="groq">⚡ Groq Llama 3.3 70B (Live AI)</option>
-            </select>
+        {/* Controls: Engine Switcher + Provider Selector + Quick Benchmarks */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-3 border-t border-slate-800/80">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Level Toggle */}
+            <div className="flex items-center p-1 bg-slate-950 border border-slate-800 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setEngineLevel('v1')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  engineLevel === 'v1'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>⚡ Level 1 (ReAct)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEngineLevel('v2')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  engineLevel === 'v2'
+                    ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shadow'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>🧠 Level 2 (Plan-and-Solve)</span>
+              </button>
+            </div>
+
+            {/* Provider Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400 font-semibold flex items-center gap-1">
+                <Brain className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Provider:</span>
+              </span>
+              <select
+                value={provider}
+                onChange={(e) => setProvider(e.target.value as 'mock' | 'gemini' | 'groq')}
+                className="bg-slate-950 border border-slate-700 hover:border-slate-600 text-xs rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium cursor-pointer"
+              >
+                <option value="mock">⚡ Mock Replay (Instant, Deterministic)</option>
+                <option value="gemini">✨ Google Gemini Flash (Live AI)</option>
+                <option value="groq">⚡ Groq Llama 3.3 70B (Live AI)</option>
+              </select>
+            </div>
           </div>
 
           {/* Preset Chips */}
