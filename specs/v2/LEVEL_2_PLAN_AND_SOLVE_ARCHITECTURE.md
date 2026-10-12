@@ -16,41 +16,41 @@ In Level 1, we built and hardened a pure **ReAct (Reasoning + Acting)** engine. 
 
 ```mermaid
 flowchart TD
-    UserGoal([User Goal & Stated Budget]) --> Stage1[Stage 1: Strategic Planner & Stager<br>Analyzes constraints & decomposes goal into a Task DAG<br>Partitions days into locked city hubs: Srinagar -> Gulmarg]
+    UserGoal(["User Goal & Stated Budget"]) --> Stage1["Stage 1: Strategic Planner & Stager<br>Analyzes constraints & decomposes goal into a Task DAG<br>Partitions days into locked city hubs: Srinagar → Gulmarg"]
     
-    Stage1 --> Blackboard[(Shared Blackboard Working Memory State<br>Stores typed Pydantic objects, not messy chat text)]
+    Stage1 --> Blackboard[("Shared Blackboard Working Memory State<br>Stores typed Pydantic objects, not messy chat text")]
     
-    subgraph ParallelExecution [Stage 2: Parallel Worker Pool (Async Dispatch)]
-        Blackboard -.-> W_Stay[Worker A: Stay Sourcing<br>Pins verified heated hotels strictly per city]
-        Blackboard -.-> W_Act[Worker B: Activity Curation<br>Pins scenic & culinary spots strictly per city]
-        Blackboard -.-> W_Transit[Worker C: Intercity Logistics<br>Computes routes, snow chains, travel durations]
+    subgraph ParallelExecution ["Stage 2: Parallel Worker Pool (Async Dispatch)"]
+        Blackboard -.-> W_Stay["Worker A: Stay Sourcing<br>Pins verified heated hotels strictly per city"]
+        Blackboard -.-> W_Act["Worker B: Activity Curation<br>Pins scenic & culinary spots strictly per city"]
+        Blackboard -.-> W_Transit["Worker C: Intercity Logistics<br>Computes routes, snow chains, travel durations"]
     end
     
     W_Stay -->|Writes objects| Blackboard
     W_Act -->|Writes objects| Blackboard
     W_Transit -->|Writes objects| Blackboard
     
-    Blackboard --> Stage3[Stage 3: Deterministic Financial Auditor<br>Calculates subtotals, 5% GST, contingency cushion against locked cap]
+    Blackboard --> Stage3["Stage 3: Deterministic Financial Auditor<br>Calculates subtotals, 5% GST, contingency cushion against locked cap"]
     Stage3 -->|Writes audit| Blackboard
     
-    Blackboard --> Stage4{Stage 4: Critic & Evaluator Check<br>Are all constraints satisfied?}
+    Blackboard --> Stage4{"Stage 4: Critic & Evaluator Check<br>Are all constraints satisfied?"}
     
-    Stage4 -- "Fixable Violation (e.g. ₹85k vs ₹80k cap)" --> TargetedReplan[Targeted Replanner (Max 1 cycle)<br>Re-queries ONLY Stay Worker for tier-2 hotels<br>Activities & Transit remain untouched]
+    Stage4 -->|"Fixable Violation (e.g. ₹85k vs ₹80k cap)"| TargetedReplan["Targeted Replanner (Max 1 cycle)<br>Re-queries ONLY Stay Worker for tier-2 hotels<br>Activities & Transit remain untouched"]
     TargetedReplan --> Blackboard
     
-    Stage4 -- "Impossible Violation (e.g. ₹6k vs ₹25k baseline)" --> Relaxation[Constraint Relaxation Policy<br>Refuses to loop endlessly!<br>Locks is_within_budget = false & writes honest safety audit notes]
+    Stage4 -->|"Impossible Violation (e.g. ₹6k vs ₹25k baseline)"| Relaxation["Constraint Relaxation Policy<br>Refuses to loop endlessly!<br>Locks is_within_budget = false & writes honest safety audit notes"]
     Relaxation --> Blackboard
     
-    Stage4 -- "Compliant" --> Stage5[Stage 5: Hybrid Synthesizer & Compiler]
+    Stage4 -->|"Compliant"| Stage5["Stage 5: Hybrid Synthesizer & Compiler"]
     TargetedReplan --> Stage5
     Relaxation --> Stage5
     
-    subgraph Stage5Pipeline [Stage 5 Breakdown: The Hybrid Curation & Binding Pattern]
-        CuratorLLM[5A. Curator LLM (100 tokens)<br>Given clean menu of items, decides day-by-day mapping:<br>Day 1: Srinagar Hotel + Shikara + Wazwan<br>Day 3: Gulmarg Hotel + Gondola]
-        CuratorLLM --> TypeSafeCompiler[5B. Python Type-Safe Compiler<br>Binds full Pydantic objects directly from Blackboard<br>Zero LLM JSON Re-typing! Zero Fallbacks!]
+    subgraph Stage5Pipeline ["Stage 5 Breakdown: The Hybrid Curation & Binding Pattern"]
+        CuratorLLM["5A. Curator LLM (100 tokens)<br>Given clean menu of items, decides day-by-day mapping:<br>Day 1: Srinagar Hotel + Shikara + Wazwan<br>Day 3: Gulmarg Hotel + Gondola"]
+        CuratorLLM --> TypeSafeCompiler["5B. Python Type-Safe Compiler<br>Binds full Pydantic objects directly from Blackboard<br>Zero LLM JSON Re-typing! Zero Fallbacks!"]
     end
     
-    TypeSafeCompiler --> FinalItinerary([100% Schema-Compliant, Verified TripPlanResponse])
+    TypeSafeCompiler --> FinalItinerary(["100% Schema-Compliant, Verified TripPlanResponse"])
 ```
 
 ---
@@ -59,7 +59,7 @@ flowchart TD
 
 ### Pillar 1: The Structured Blackboard Working Memory (`tripmind/v2/state.py`)
 Instead of dumping raw JSON strings into a growing chat list (`messages = [...]`), Level 2 uses a **Typed State Object** (The Blackboard Architectural Pattern):
-- Each worker agent receives a **tiny, focused prompt** ($\le 300$ tokens) with only the specific inputs it needs.
+- Each worker agent receives a **tiny, focused prompt** (≤ 300 tokens) with only the specific inputs it needs.
 - Worker agents write their results directly into `WorkingMemoryState` as strongly typed Pydantic objects (`AccommodationItem`, `ActivityItem`, `RouteResult`).
 - **Memory never bloats to 35 KB. HTTP 413 Payload Too Large is permanently eliminated.**
 
@@ -67,15 +67,15 @@ Instead of dumping raw JSON strings into a growing chat list (`messages = [...]`
 The Planner decomposes user intent into a **Task Execution DAG (Directed Acyclic Graph)**:
 1. `T1`: Regional Accessibility & Sunset Hours (Srinagar & Gulmarg open; Sonamarg closed).
 2. `T2`: Spatial-Temporal Hub Staging (Days 1–2: Srinagar, Days 3–4: Gulmarg, Day 5: Srinagar Departure).
-3. `T3` (Stays), `T4` (Activities), `T5` (Transit) $\rightarrow$ Depend only on `T2`.
-4. `T6` (Financial Audit) $\rightarrow$ Depends on `T3`, `T4`, `T5`.
+3. `T3` (Stays), `T4` (Activities), `T5` (Transit) → Depend only on `T2`.
+4. `T6` (Financial Audit) → Depends on `T3`, `T4`, `T5`.
 **Geographical Consistency is mathematically guaranteed:** Days 1–2 *cannot* accept Gulmarg Gondola rides because their geographic boundary is locked to Srinagar!
 
 ### Pillar 3: Concurrent / Parallel Worker Dispatch (`tripmind/v2/workers/`)
 Tasks with identical dependencies execute in **parallel** using Python `asyncio`:
 - `StayWorker` queries hotels for Srinagar and Gulmarg concurrently.
 - `ActivityWorker` queries scenic & culinary activities concurrently.
-- `TransitWorker` computes the Srinagar $\leftrightarrow$ Gulmarg mountain route concurrently.
+- `TransitWorker` computes the Srinagar ↔ Gulmarg mountain route concurrently.
 **Execution latency is cut by 60% compared to sequential ReAct turns.**
 
 ### Pillar 4: Deterministic Financial Auditor (`tripmind/v2/auditor.py`)
@@ -92,7 +92,7 @@ The Critic inspects candidate outputs against non-negotiable constraints:
 
 ### Pillar 6: Hybrid Curation & Type-Safe Compiler (`tripmind/v2/compiler.py`)
 Eliminates the "Broken Telephone Game" where the LLM was forced to re-type 2,000 lines of JSON from memory:
-1. **The Curator LLM (100 tokens):** Emits a tiny, lightweight day-assignment map (`Day 1 -> Stay A + Act 1 + Act 2`).
+1. **The Curator LLM (100 tokens):** Emits a tiny, lightweight day-assignment map (`Day 1 → Stay A + Act 1 + Act 2`).
 2. **The Python Compiler:** Binds the real, pre-validated Pydantic objects directly into `DayPlan` instances.
 **Zero output token truncation. Zero missing fields. Zero hardcoded fallback numbers.**
 
@@ -123,11 +123,11 @@ tripmind/
 ## 4. API Endpoints & Interactive UI Engine Toggle
 
 - **Dual API Architecture:**
-  - `POST /api/v1/planner/plan` $\rightarrow$ Level 1 ReAct Engine (preserved for regression testing & comparison).
-  - `POST /api/v2/planner/plan` $\rightarrow$ Level 2 Plan-and-Solve Engine.
+  - `POST /api/v1/planner/plan` → Level 1 ReAct Engine (preserved for regression testing & comparison).
+  - `POST /api/v2/planner/plan` → Level 2 Plan-and-Solve Engine.
 - **Frontend Dashboard:**
   - An interactive **Engine Switcher** in the top navigation:
-    `[ ⚡ Level 1: ReAct Engine ]  vs.  [ 🧠 Level 2: Plan-and-Solve Engine ]`
+    `[ ⚡ Level 1: ReAct Engine ]` vs. `[ 🧠 Level 2: Plan-and-Solve Engine ]`
   - In Level 2 mode, the Cognitive Trace Drawer renders the **Live Task DAG Execution**:
     - 📋 **Milestone 1:** Regional Staging (`Done`)
     - ⚡ **Milestone 2 (Parallel):** Stays, Activities & Transit Sourced (`Done`)
