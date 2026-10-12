@@ -10,12 +10,15 @@ clean ReAct turn protocol.
 """
 
 import json
+import logging
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from tripmind.config import settings
 from tripmind.tools.registry import Tool, default_registry
+
+logger = logging.getLogger("tripmind.llm")
 
 
 class ToolCallItem(BaseModel):
@@ -23,6 +26,7 @@ class ToolCallItem(BaseModel):
     call_id: str
     name: str
     arguments: Dict[str, Any]
+    thought_signature: Optional[Any] = Field(default=None, exclude=True)
 
 
 class LLMTurnResponse(BaseModel):
@@ -78,6 +82,9 @@ class GeminiProvider(BaseLLMProvider):
         callable_tools = [t.func for t in tools]
         config = types.GenerateContentConfig(
             tools=callable_tools,
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                disable=True
+            ),
             temperature=0.2,  # Low temperature for deterministic planning
         )
 
@@ -98,7 +105,11 @@ class GeminiProvider(BaseLLMProvider):
                 for tc in msg.get("tool_calls", []):
                     fn_name = tc["name"]
                     fn_args = tc["arguments"]
-                    parts.append(types.Part.from_function_call(name=fn_name, args=fn_args))
+                    p = types.Part.from_function_call(name=fn_name, args=fn_args)
+                    sig = tc.get("thought_signature")
+                    if sig:
+                        p.thought_signature = sig
+                    parts.append(p)
                 contents.append(types.Content(role="model", parts=parts))
             elif role == "tool":
                 fn_name = msg.get("name", "")
@@ -110,26 +121,45 @@ class GeminiProvider(BaseLLMProvider):
                 part = types.Part.from_function_response(name=fn_name, response={"result": result_json})
                 contents.append(types.Content(role="user", parts=[part]))
 
-        resp = self.client.models.generate_content(
-            model=self.model,
-            contents=contents,
-            config=config,
-        )
+        import time
+        resp = None
+        max_retries = 4
+        for attempt in range(1, max_retries + 1):
+            try:
+                resp = self.client.models.generate_content(
+                    model=self.model,
+                    contents=contents,
+                    config=config,
+                )
+                break
+            except Exception as e:
+                err_str = str(e)
+                if ("429" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt < max_retries:
+                    wait_sec = attempt * 5  # 5s, 10s, 15s backoff
+                    logger.warning(
+                        f"Gemini Free Tier rate limit (429) hit. Backing off for {wait_sec}s before retry (attempt {attempt}/{max_retries})..."
+                    )
+                    time.sleep(wait_sec)
+                else:
+                    raise e
 
         # Parse Gemini response for function calls vs final text
         tool_calls = []
         text_content = ""
         thought_trace = ""
 
-        if resp.function_calls:
-            for idx, fc in enumerate(resp.function_calls):
-                tool_calls.append(
-                    ToolCallItem(
-                        call_id=f"call_{idx}_{fc.name}",
-                        name=fc.name,
-                        arguments=dict(fc.args) if fc.args else {},
+        if resp.candidates and resp.candidates[0].content and resp.candidates[0].content.parts:
+            for idx, part in enumerate(resp.candidates[0].content.parts):
+                if getattr(part, "function_call", None):
+                    fc = part.function_call
+                    tool_calls.append(
+                        ToolCallItem(
+                            call_id=f"call_{idx}_{fc.name}",
+                            name=fc.name,
+                            arguments=dict(fc.args) if fc.args else {},
+                            thought_signature=getattr(part, "thought_signature", None),
+                        )
                     )
-                )
 
         if resp.text:
             text_content = resp.text
@@ -137,13 +167,20 @@ class GeminiProvider(BaseLLMProvider):
             if "<thought>" in text_content and "</thought>" in text_content:
                 parts = text_content.split("</thought>")
                 thought_trace = parts[0].replace("<thought>", "").strip()
-                text_content = parts[1].strip()
-
-        return LLMTurnResponse(
+        try:
+            logger.info(f"--- [LLM RAW RESPONSE: Gemini] ---\n{resp}")
+        except Exception:
+            pass
+        turn_res = LLMTurnResponse(
             thought=thought_trace or "Reasoning over travel constraints and determining next action.",
             content=text_content,
             tool_calls=tool_calls,
         )
+        try:
+            logger.info(f"--- [NORMALIZED LLM TURN RESPONSE] ---\n{turn_res.model_dump_json(indent=2)}")
+        except Exception:
+            logger.info(f"--- [NORMALIZED LLM TURN RESPONSE] --- (tool_calls={len(tool_calls)})")
+        return turn_res
 
 
 # ---------------------------------------------------------------------------
@@ -206,12 +243,56 @@ class GroqProvider(BaseLLMProvider):
                     "content": msg.get("content", ""),
                 })
 
-        resp = self.client.chat.completions.create(
-            model=self.model,
-            messages=formatted_msgs,
-            tools=groq_tools,
-            temperature=0.2,
-        )
+        # Dynamic Token Allocation:
+        # Tool turns only emit short function calls (~50 tokens), so 800 keeps us under the OTPM limit.
+        # The final synthesis turn produces a multi-day itinerary in JSON, requiring 2048 tokens.
+        extra_kwargs: Dict[str, Any] = {}
+        if groq_tools:
+            extra_kwargs["tools"] = groq_tools
+            extra_kwargs["max_tokens"] = 800
+        else:
+            extra_kwargs["max_tokens"] = 2048
+
+        import time
+        resp = None
+        max_retries = 4
+        for attempt in range(1, max_retries + 1):
+            try:
+                resp = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=formatted_msgs,
+                    temperature=0.2,
+                    **extra_kwargs,
+                )
+                break
+            except Exception as e:
+                err_str = str(e)
+                if ("413" in err_str or "payload too large" in err_str.lower()) and attempt < max_retries:
+                    logger.warning("Groq 413 Payload Too Large. Compacting payload and retrying immediately...")
+                    for m in formatted_msgs:
+                        if m.get("role") == "tool" and len(m.get("content", "")) > 250:
+                            m["content"] = m["content"][:250] + "... [compacted]"
+                    continue
+
+                if ("429" in err_str or "rate_limit" in err_str.lower()) and attempt < max_retries:
+                    import re
+                    wait_sec = 10.0 * attempt
+                    match = re.search(r"try again in (\d+(\.\d+)?)s", err_str)
+                    if match:
+                        wait_sec = float(match.group(1)) + 1.5
+                    elif hasattr(e, "response") and getattr(e, "response", None) is not None:
+                        ra = e.response.headers.get("retry-after")
+                        if ra:
+                            try:
+                                wait_sec = max(float(ra) + 1.0, wait_sec)
+                            except ValueError:
+                                pass
+                    logger.warning(
+                        f"Groq rate limit hit. Backing off for {wait_sec:.1f}s before retry (attempt {attempt}/{max_retries})..."
+                    )
+                    time.sleep(wait_sec)
+                else:
+                    raise e
 
         choice = resp.choices[0]
         raw_tool_calls = choice.message.tool_calls or []
@@ -236,11 +317,14 @@ class GroqProvider(BaseLLMProvider):
             thought = parts[0].replace("<thought>", "").strip()
             content = parts[1].strip()
 
-        return LLMTurnResponse(
+        logger.info(f"--- [LLM RAW RESPONSE: Groq] ---\n{choice.message}")
+        turn_res = LLMTurnResponse(
             thought=thought,
             content=content,
             tool_calls=parsed_tcs,
         )
+        logger.info(f"--- [NORMALIZED LLM TURN RESPONSE] ---\n{turn_res.model_dump_json(indent=2)}")
+        return turn_res
 
 
 # ---------------------------------------------------------------------------
@@ -825,16 +909,21 @@ class MockProvider(BaseLLMProvider):
 
 
 def get_llm_provider(provider_name: Optional[str] = None) -> BaseLLMProvider:
-    """Factory function resolving active LLM provider with smart fallback."""
+    """Factory function resolving active LLM provider."""
     name = (provider_name or settings.TRIPMIND_LLM_PROVIDER).lower()
     if name == "gemini":
-        if not settings.GEMINI_API_KEY:
-            # Smart fallback for local learning / testing without API keys
-            return MockProvider()
+        if not settings.GEMINI_API_KEY or settings.GEMINI_API_KEY.strip() == "your_gemini_api_key_here":
+            raise ValueError(
+                "GEMINI_API_KEY is not configured in your .env file! "
+                "Please add your Gemini API key to .env, or switch to 'Mock Replay' in the LLM dropdown."
+            )
         return GeminiProvider()
     elif name == "groq":
-        if not settings.GROQ_API_KEY:
-            return MockProvider()
+        if not settings.GROQ_API_KEY or settings.GROQ_API_KEY.strip() == "your_groq_api_key_here":
+            raise ValueError(
+                "GROQ_API_KEY is not configured in your .env file! "
+                "Please add your Groq API key to .env, or switch to 'Mock Replay' in the LLM dropdown."
+            )
         return GroqProvider()
     elif name == "mock":
         return MockProvider()

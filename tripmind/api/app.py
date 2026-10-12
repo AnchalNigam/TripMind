@@ -1,9 +1,15 @@
 """FastAPI Application Entry Point."""
 
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from tripmind.config import settings
 from tripmind.api.routes import router
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 
 app = FastAPI(
     title="TripMind 🏔️ — Autonomous Adaptive Trip Planner",

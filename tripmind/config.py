@@ -27,8 +27,8 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
 
     # Models
-    GEMINI_MODEL: str = "gemini-2.0-flash"
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GEMINI_MODEL: str = "gemini-3.5-flash"
+    GROQ_MODEL: str = "qwen/qwen3.8-27b"
 
     # Agent Loop Safeguards
     # Guardrail: Never let an autonomous agent loop infinitely.

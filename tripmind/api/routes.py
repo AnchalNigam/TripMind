@@ -6,9 +6,10 @@ from tripmind.tools.registry import default_registry
 from tripmind.core.agent import ReActAgent
 from tripmind.core.llm import get_llm_provider
 from tripmind.schemas.itinerary import PlannerRequest, TripPlanResponse
+import logging
 
 router = APIRouter(prefix="/api/v1")
-
+logger = logging.getLogger("tripmind.agent")
 
 @router.get("/health")
 def health_check():
@@ -62,8 +63,11 @@ def generate_trip_plan(request: PlannerRequest):
     """Execute the multi-turn ReAct planning agent on a user query."""
     try:
         provider = get_llm_provider(request.preferred_provider)
+        logger.info(f"User Choosen LLM provider - ({provider})")
         agent = ReActAgent(provider=provider, registry=default_registry)
         plan = agent.plan(request.user_query)
         return plan
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Planning execution error: {str(e)}")

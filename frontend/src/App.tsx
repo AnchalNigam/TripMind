@@ -165,7 +165,7 @@ export function App() {
               className="bg-slate-950 border border-slate-700 hover:border-slate-600 text-xs rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium cursor-pointer"
             >
               <option value="mock">⚡ Mock Replay (Instant, Deterministic)</option>
-              <option value="gemini">✨ Google Gemini 2.0 (Live AI)</option>
+              <option value="gemini">✨ Google Gemini Flash (Live AI)</option>
               <option value="groq">⚡ Groq Llama 3.3 70B (Live AI)</option>
             </select>
           </div>
