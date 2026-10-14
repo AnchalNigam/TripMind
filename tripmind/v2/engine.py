@@ -33,7 +33,7 @@ class PlanAndSolveEngine:
         chosen_provider = provider or settings.TRIPMIND_LLM_PROVIDER
         self.llm_client = LLMClient(provider=chosen_provider) if chosen_provider != "mock" else None
         self.planner = StrategicPlanner(llm_client=self.llm_client)
-        self.staging_worker = StagingWorker()
+        self.staging_worker = StagingWorker(llm_client=self.llm_client)
         self.stay_worker = StayWorker()
         self.activity_worker = ActivityWorker()
         self.transit_worker = TransitWorker()

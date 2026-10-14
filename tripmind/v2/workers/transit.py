@@ -25,7 +25,7 @@ class TransitWorker:
         state.mark_task_running("T4_TRANSIT")
         state.log_milestone("Milestone 2C: Transit", "running", "Calculating mountain transit legs and winter specs...")
 
-        month = state.constraints.month
+        month = state.constraints.month or "December"
         
         # Identify required legs from day stages
         needed_legs = []

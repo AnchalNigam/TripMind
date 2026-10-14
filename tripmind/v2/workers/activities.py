@@ -26,9 +26,11 @@ class ActivityWorker:
         state.log_milestone("Milestone 2B: Activities", "running", "Curation of scenic and culinary experiences...")
 
         required_regions = list(dict.fromkeys([stage.region for stage in state.day_stages]))
-        month = state.constraints.month
+        if not required_regions:
+            required_regions = [state.constraints.destination]
+        month = state.constraints.month or "December"
         exclude_adventure = state.constraints.exclude_adventure
-        categories = state.constraints.special_interests
+        categories = state.constraints.special_interests or ["scenic", "culinary"]
 
         for region in required_regions:
             tool_input = {

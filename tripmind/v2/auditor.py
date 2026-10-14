@@ -64,11 +64,12 @@ class FinancialAuditor:
 
         breakdown: BudgetBreakdownResult = calculate_budget_breakdown(**tool_input)
 
+        cap_display = f"₹{budget_cap:,.0f}" if budget_cap else "Unconstrained"
         state.add_trace_step(
             thought=(
                 f"FinancialAuditor: Running deterministic arithmetic for stays (₹{stays_cost:,.0f}), "
                 f"transit (₹{transit_cost:,.0f}), food (₹{food_cost:,.0f}), activities (₹{activities_cost:,.0f}) "
-                f"against locked cap of ₹{budget_cap:,.0f}."
+                f"against budget ceiling: {cap_display}."
             ),
             tool_name="calculate_budget_breakdown",
             tool_input=tool_input,
@@ -78,7 +79,7 @@ class FinancialAuditor:
         state.financial_audit = breakdown
 
         summary = (
-            f"Total: ₹{breakdown.total_estimated_inr:,.0f} | Cap: ₹{breakdown.budget_cap_inr:,.0f} | "
+            f"Total: ₹{breakdown.total_estimated_inr:,.0f} | Cap: {cap_display} | "
             f"Compliant: {breakdown.is_within_budget} | Remaining: ₹{breakdown.remaining_headroom_inr:,.0f}"
         )
         state.mark_task_completed("T5_AUDIT", summary=summary)

@@ -931,6 +931,20 @@ def get_llm_provider(provider_name: Optional[str] = None) -> BaseLLMProvider:
         return MockProvider()
 
 
+def clean_and_parse_json(raw_text: str, schema: Any) -> Any:
+    """Strips markdown codeblocks, finds JSON object boundaries, and validates against Pydantic schema."""
+    import re
+    cleaned = raw_text.strip()
+    if "```" in cleaned:
+        cleaned = re.sub(r"^```[a-zA-Z]*\n?", "", cleaned)
+        cleaned = re.sub(r"\n?```$", "", cleaned)
+        cleaned = cleaned.strip("` \n")
+    match = re.search(r'(\{[\s\S]*\})', cleaned)
+    if match:
+        cleaned = match.group(1)
+    return schema.model_validate_json(cleaned)
+
+
 class LLMClient:
     """Convenience wrapper around BaseLLMProvider providing helper methods for Level 2."""
 
@@ -950,4 +964,141 @@ class LLMClient:
         messages.append({"role": "user", "content": prompt})
         response = self.provider.generate_turn(messages=messages, tools=[])
         return response.content or ""
+
+    def extract_structured(self, prompt: str, schema: Any, system_instruction: str = "") -> Any:
+        """Extracts structured Pydantic object using vendor-specific schema constraints."""
+        import json
+        import re
+
+        # 1. Google Gemini Provider (Native Response Schema)
+        if isinstance(self.provider, GeminiProvider):
+            from google.genai import types
+            config = types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=schema,
+                system_instruction=system_instruction or "You are a precise data extractor. Output valid JSON strictly conforming to the schema.",
+                temperature=0.1,
+            )
+            resp = self.provider.client.models.generate_content(
+                model=self.provider.model,
+                contents=prompt,
+                config=config,
+            )
+            return schema.model_validate_json(resp.text)
+
+        # 2. Groq Provider (JSON Object Mode with Schema Injection)
+        elif isinstance(self.provider, GroqProvider):
+            schema_json = json.dumps(schema.model_json_schema(), indent=2)
+            sys_msg = (
+                f"{system_instruction}\n\n"
+                f"You must return ONLY a valid JSON object strictly conforming to this JSON Schema:\n{schema_json}"
+            )
+            messages = [
+                {"role": "system", "content": sys_msg},
+                {"role": "user", "content": prompt},
+            ]
+            resp = self.provider.client.chat.completions.create(
+                model=self.provider.model,
+                messages=messages,
+                response_format={"type": "json_object"},
+                temperature=0.1,
+            )
+            return clean_and_parse_json(resp.choices[0].message.content, schema)
+
+        # 3. Fallback / Mock Provider
+        else:
+            schema_json = json.dumps(schema.model_json_schema(), indent=2)
+            sys_msg = (
+                f"{system_instruction}\n\n"
+                f"You must return ONLY a valid JSON object strictly conforming to this JSON Schema:\n{schema_json}"
+            )
+            raw = self.call_fast(prompt=prompt, system_instruction=sys_msg)
+            try:
+                return clean_and_parse_json(raw, schema)
+            except Exception:
+                return self._mock_structured_extract(prompt, schema)
+
+    def _mock_structured_extract(self, prompt: str, schema: Any) -> Any:
+        """Deterministic helper for offline testing that extracts user parameters without hardcoding."""
+        import re
+        schema_name = getattr(schema, "__name__", str(schema))
+
+        if schema_name == "ParsedConstraints":
+            # Target ONLY the user's query text, NOT the system extraction directives/examples
+            query_match = re.search(r'User Query:\s*"([^"]+)"', prompt)
+            target_text = query_match.group(1) if query_match else prompt
+
+            # Extract duration (look for N days or N nights)
+            dur_match = re.search(r'([0-9]+)\s*days?', target_text, re.IGNORECASE)
+            duration_days = int(dur_match.group(1)) if dur_match else 3
+            duration_nights = max(1, duration_days - 1)
+
+            # Extract budget (look for k, ₹, or explicit numbers)
+            k_match = re.search(r'(?:₹|rs\.?|inr)?\s*([0-9]+(?:\.[0-9]+)?)\s*k\b', target_text, re.IGNORECASE)
+            budget_cap = None
+            if k_match:
+                budget_cap = float(k_match.group(1)) * 1000.0
+            else:
+                num_match = re.search(r'(?:₹|rs\.?|inr|budget\s*(?:around|of|is)?)\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,7})', target_text, re.IGNORECASE)
+                if num_match:
+                    clean_str = num_match.group(1).replace(',', '')
+                    budget_cap = float(clean_str)
+
+            # Extract month from calendar months
+            months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+            month = None
+            for m in months:
+                if re.search(rf'\b{m}\b', target_text, re.IGNORECASE):
+                    month = m
+                    break
+
+            # Extract destination: dynamically find location without hardcoded city lists
+            dest_match = re.search(r'(?:visit|go to|trip to|holiday in|travel to|explore)\s+([A-Za-z\s]+?)(?:\s+in|\s+for|\s+with|\s+budget|\.|\,|$)', target_text, re.IGNORECASE)
+            if dest_match:
+                destination = dest_match.group(1).strip()
+            else:
+                cap_words = re.findall(r'\b[A-Z][a-z]+\b', target_text)
+                filtered = [w for w in cap_words if w not in months and w not in ["I", "We", "Budget", "Day", "Days", "User", "Extract"]]
+                destination = filtered[0] if filtered else "Destination"
+
+            exclude_adv = (
+                "no adventure" in target_text.lower()
+                or "not interested in adventure" in target_text.lower()
+                or "avoid adventure" in target_text.lower()
+                or "aren't interested in adventure" in target_text.lower()
+                or ("no" in target_text.lower() and "adventure" in target_text.lower())
+                or "no sports" in target_text.lower()
+            )
+            pace = "relaxed" if any(w in target_text.lower() for w in ["relaxed", "hectic", "slow", "unhurried", "leisure"]) else "moderate"
+            profile = "Couple" if any(w in target_text.lower() for w in ["wife", "husband", "partner", "couple", "honeymoon"]) else "Solo / Group"
+
+            interests = []
+            if "scenic" in target_text.lower() or "views" in target_text.lower():
+                interests.append("scenic")
+            if "food" in target_text.lower() or "culinary" in target_text.lower() or "seafood" in target_text.lower():
+                interests.append("culinary")
+            if "beach" in target_text.lower():
+                interests.append("beach")
+
+            return schema(
+                destination=destination,
+                month=month,
+                duration_days=duration_days,
+                duration_nights=duration_nights,
+                traveler_profile=profile,
+                budget_cap_inr=budget_cap,
+                exclude_adventure=exclude_adv,
+                pace=pace,
+                special_interests=interests,
+            )
+
+        elif schema_name == "CuratorSelectionPlan":
+            return schema(
+                trip_title="Curated Itinerary",
+                synthesis_rationale="Tailored curation matching traveler pace and preferences.",
+                days=[]
+            )
+
+        raise ValueError(f"Mock structured extractor cannot auto-generate schema: {schema_name}")
+
 

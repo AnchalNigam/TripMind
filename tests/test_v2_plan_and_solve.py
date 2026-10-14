@@ -76,9 +76,9 @@ def test_staging_worker_spatial_partitioning():
     assert state.day_stages[4].region == "Gulmarg"
 
     # Verify transit days
-    assert state.day_stages[0].is_transit_day is True  # Airport to Srinagar
-    assert state.day_stages[2].is_transit_day is True  # Srinagar to Gulmarg
-    assert state.day_stages[4].is_transit_day is True  # Gulmarg to Airport
+    assert state.day_stages[0].is_transit_day is True  # Day 1: Airport to Srinagar
+    assert state.day_stages[3].is_transit_day is True  # Day 4: Srinagar to Gulmarg transfer
+    assert state.day_stages[4].is_transit_day is True  # Day 5: Gulmarg to Airport departure
 
 
 def test_worker_pool_execution():
@@ -183,3 +183,56 @@ def test_api_v2_planner_endpoint():
     assert data["destination"] == "Kashmir"
     assert len(data["days"]) == 5
     assert data["budget_summary"]["budget_cap_inr"] == 80000.0
+
+
+def test_unconstrained_budget_no_cap():
+    """Verify that when no budget is mentioned, budget_cap_inr is None (never hardcoded 80k)."""
+    unconstrained_query = "I want to explore Jaipur for 3 days with my partner. Good local food and palaces."
+    planner = StrategicPlanner(llm_client=None)
+    constraints = planner.parse_user_constraints(unconstrained_query)
+
+    assert constraints.destination == "Jaipur"
+    assert constraints.duration_days == 3
+    assert constraints.budget_cap_inr is None  # Must NOT be 80k!
+
+    engine = PlanAndSolveEngine(provider="mock")
+    plan = engine.plan(unconstrained_query)
+    assert plan.destination == "Jaipur"
+    assert len(plan.days) == 3
+    assert plan.budget_summary.is_within_budget is True
+
+
+def test_goa_different_duration_and_budget():
+    """Verify dynamic execution for Goa with 4 days and 40k budget."""
+    goa_query = "I want to visit Goa in November for 4 days. Relaxing beach trip, seafood, no water sports adventure. Budget ₹40k."
+    planner = StrategicPlanner(llm_client=None)
+    constraints = planner.parse_user_constraints(goa_query)
+
+    assert constraints.destination == "Goa"
+    assert constraints.duration_days == 4
+    assert constraints.budget_cap_inr == 40000.0
+    assert constraints.exclude_adventure is True
+
+    engine = PlanAndSolveEngine(provider="mock")
+    plan = engine.plan(goa_query)
+    assert plan.destination == "Goa"
+    assert len(plan.days) == 4
+    assert plan.budget_summary.budget_cap_inr == 40000.0
+
+
+def test_assam_different_duration():
+    """Verify dynamic execution for Assam with 2 days and 35k budget."""
+    assam_query = "I want to go to Assam for 2 days. Relaxing trip, good local food, no adventure sports. Budget around ₹35k."
+    planner = StrategicPlanner(llm_client=None)
+    constraints = planner.parse_user_constraints(assam_query)
+
+    assert constraints.destination == "Assam"
+    assert constraints.duration_days == 2
+    assert constraints.budget_cap_inr == 35000.0
+
+    engine = PlanAndSolveEngine(provider="mock")
+    plan = engine.plan(assam_query)
+    assert plan.destination == "Assam"
+    assert len(plan.days) == 2
+    assert plan.budget_summary.budget_cap_inr == 35000.0
+

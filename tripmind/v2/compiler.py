@@ -84,19 +84,21 @@ class ItineraryCompiler:
             "relaxed_pace": True,
         }
 
+        cap_str = f"locked cap of ₹{state.constraints.budget_cap_inr:,.0f}" if state.constraints.budget_cap_inr else "unconstrained budget"
+        month_str = f" ({state.constraints.month})" if state.constraints.month else ""
         reasoning_summary = (
             f"TripMind Level 2 Plan-and-Solve completed successfully. "
-            f"Itinerary structured across {len(day_plans)} days in {state.constraints.destination} ({state.constraints.month}). "
-            f"Verified heated accommodations selected across all hubs. "
-            f"Negative constraint strictly maintained (zero adventure activities). "
+            f"Itinerary structured across {len(day_plans)} days in {state.constraints.destination}{month_str}. "
+            f"Accommodations and curated experiences selected across all hubs. "
+            f"Negative constraint strictly maintained ({'zero adventure activities' if state.constraints.exclude_adventure else 'adventures permitted'}). "
             f"Financial audit status: {'COMPLIANT' if audit and audit.is_within_budget else 'CONSTRAINED (Relaxation Applied)'}. "
-            f"Total estimated cost: ₹{audit.total_estimated_inr:,.0f} against locked cap of ₹{state.constraints.budget_cap_inr:,.0f}."
+            f"Total estimated cost: ₹{audit.total_estimated_inr:,.0f} against {cap_str}."
         )
 
         final_response = TripPlanResponse(
             trip_title=curation_plan.trip_title,
             destination=state.constraints.destination,
-            month=state.constraints.month,
+            month=state.constraints.month or "Current",
             duration_days=state.constraints.duration_days,
             duration_nights=state.constraints.duration_nights,
             traveler_profile=state.constraints.traveler_profile,

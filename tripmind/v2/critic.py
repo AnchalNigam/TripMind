@@ -26,7 +26,7 @@ class CriticAgent:
         state.mark_task_running("T6_CRITIC")
         state.log_milestone("Milestone 4: Critic Review", "running", "Evaluating safety, heating, adventure, and budget constraints...")
 
-        is_winter = state.constraints.month.lower() in ["december", "january", "february"]
+        is_winter = bool(state.constraints.month and state.constraints.month.lower() in ["december", "january", "february"])
         
         # 1. Winter Heating Invariant Check
         heating_ok = True
@@ -54,17 +54,21 @@ class CriticAgent:
             state.mark_task_failed("T6_CRITIC", error="Financial audit missing.")
             return state
 
-        if audit.is_within_budget:
+        if not state.constraints.budget_cap_inr:
             state.critic_passed = True
-            state.critic_notes.append(f"Budget compliant: Total ₹{audit.total_estimated_inr:,.0f} <= Cap ₹{audit.budget_cap_inr:,.0f}.")
+            state.critic_notes.append(f"Budget unconstrained: Total estimated expenditure is ₹{audit.total_estimated_inr:,.0f}.")
+        elif audit.is_within_budget:
+            state.critic_passed = True
+            state.critic_notes.append(f"Budget compliant: Total ₹{audit.total_estimated_inr:,.0f} <= Cap ₹{state.constraints.budget_cap_inr:,.0f}.")
         else:
             # Budget overrun detected!
             # Check if fixable via Targeted Replan (swapping hotel tiers)
-            if state.replan_count < 1 and audit.total_estimated_inr <= (state.constraints.budget_cap_inr * 1.35):
+            cap = state.constraints.budget_cap_inr
+            if state.replan_count < 1 and audit.total_estimated_inr <= (cap * 1.35):
                 state.add_trace_step(
                     thought=(
-                        f"CriticAgent: Budget overrun detected (₹{audit.total_estimated_inr:,.0f} vs cap ₹{audit.budget_cap_inr:,.0f}). "
-                        f"Triggering targeted replan (depth=1) to select tier-2 heated accommodations."
+                        f"CriticAgent: Budget overrun detected (₹{audit.total_estimated_inr:,.0f} vs cap ₹{cap:,.0f}). "
+                        f"Triggering targeted replan (depth=1) to select tier-2 accommodations."
                     ),
                     tool_name="replan_stays",
                 )
@@ -80,12 +84,12 @@ class CriticAgent:
                 # Re-check after targeted replan
                 if state.financial_audit and state.financial_audit.is_within_budget:
                     state.critic_passed = True
-                    note = f"Targeted replan successful: Selected tier-2 heated stays. New total ₹{state.financial_audit.total_estimated_inr:,.0f} is within cap."
+                    note = f"Targeted replan successful: Selected tier-2 stays. New total ₹{state.financial_audit.total_estimated_inr:,.0f} is within cap."
                     state.critic_notes.append(note)
                 else:
                     self._apply_constraint_relaxation(state)
             else:
-                # Mathematically unachievable request (e.g. ₹6k budget for 5 days in winter)
+                # Mathematically unachievable request
                 self._apply_constraint_relaxation(state)
 
         summary = f"Critic review complete (Replan count: {state.replan_count}, Relaxation: {state.constraint_relaxation_applied})."
@@ -99,15 +103,22 @@ class CriticAgent:
         state.constraint_relaxation_applied = True
         state.critic_passed = True  # Allows pipeline to compile safely
 
-        requested_cap = state.constraints.budget_cap_inr
-        baseline_cost = state.financial_audit.total_estimated_inr if state.financial_audit else 25875.0
+        requested_cap = state.constraints.budget_cap_inr or 0.0
+        baseline_cost = state.financial_audit.total_estimated_inr if state.financial_audit else 25000.0
         
+        is_subzero = any("-" in r.temp_range_celsius for r in state.accessible_regions)
+        safety_context = (
+            "mandatory heated stays and winter mountain transit"
+            if is_subzero
+            else "essential lodging, minimum daily dining, and local transit transfers"
+        )
+        month_str = f" ({state.constraints.month})" if state.constraints.month else ""
+
         relaxation_explanation = (
             f"Constraint Relaxation Policy Applied: The requested budget of ₹{requested_cap:,.0f} cannot support "
-            f"a {state.constraints.duration_days}-day itinerary in {state.constraints.destination} ({state.constraints.month}). "
-            f"Verified baseline required for safe winter travel is ₹{baseline_cost:,.0f} "
-            f"(mandatory heated stays @ ₹3,000/night, snow-chain 4x4 mountain transit, and minimum food/activity baseline). "
-            f"To guarantee traveler safety against sub-zero conditions, safety invariants took precedence over the budget cap."
+            f"a {state.constraints.duration_days}-day itinerary in {state.constraints.destination}{month_str}. "
+            f"Verified baseline required for safe travel is ₹{baseline_cost:,.0f} ({safety_context}). "
+            f"Essential lodging and traveler safety took precedence over the unachievable budget cap."
         )
         
         state.critic_notes.append(relaxation_explanation)
