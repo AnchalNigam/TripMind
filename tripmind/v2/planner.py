@@ -1,13 +1,13 @@
 """Strategic Planner & Upfront Task DAG Generator for Level 2 (Plan-and-Solve).
 
-AGENTIC AI CONCEPT — LLM-Driven Goal Normalization & Invariant Locking:
+AGENTIC AI CONCEPT — Dynamic DAG Construction & Invariant Locking:
 1. In production Agentic AI, user intent extraction is performed by the LLM using
    schema-constrained decoding (Pydantic / Structured Outputs). We never rely on fragile
-   English keyword if-else branches or hardcoded city lists.
+   keyword if-else branches or hardcoded city lists.
 2. The user's budget ceiling is locked into `ParsedConstraints.budget_cap_inr`. If the user
    did not state a budget, it is set to `None` — the agent never invents an arbitrary cap.
-3. The Planner generates a Directed Acyclic Graph (DAG) of typed tasks with explicit
-   dependency relations.
+3. The Planner dynamically constructs a Directed Acyclic Graph (DAG) with explicit
+   dependency relations adapted to the trip duration and requirements.
 """
 
 from typing import Optional, Dict, Any, List
@@ -55,9 +55,9 @@ class StrategicPlanner:
 
         return constraints
 
-    def build_initial_dag(self) -> Dict[str, TaskStep]:
-        """Constructs the 6-stage Task DAG."""
-        return {
+    def build_initial_dag(self, constraints: Optional[ParsedConstraints] = None) -> Dict[str, TaskStep]:
+        """Constructs the Task DAG dynamically adapted to trip parameters."""
+        tasks: Dict[str, TaskStep] = {
             "T1_STAGING": TaskStep(
                 task_id="T1_STAGING",
                 name="Geographic & Temporal Stager",
@@ -75,7 +75,7 @@ class StrategicPlanner:
             "T3_ACTIVITIES": TaskStep(
                 task_id="T3_ACTIVITIES",
                 name="Activity Curation Worker",
-                description="Source non-adventure scenic and culinary experiences strictly per hub.",
+                description="Source scenic and culinary experiences strictly per hub.",
                 dependencies=["T1_STAGING"],
                 status="pending",
             ),
@@ -109,10 +109,17 @@ class StrategicPlanner:
             ),
         }
 
+        # Dynamic DAG tailoring: If single-day excursion with 0 nights requested, stays can be omitted
+        if constraints and constraints.duration_days == 1 and constraints.duration_nights == 0:
+            tasks.pop("T2_STAYS", None)
+            tasks["T5_AUDIT"].dependencies = ["T3_ACTIVITIES", "T4_TRANSIT"]
+
+        return tasks
+
     def initialize_state(self, user_query: str) -> WorkingMemoryState:
         """Creates the initial WorkingMemoryState with locked constraints and Task DAG."""
         constraints = self.parse_user_constraints(user_query)
-        tasks = self.build_initial_dag()
+        tasks = self.build_initial_dag(constraints=constraints)
         state = WorkingMemoryState(
             user_query=user_query,
             constraints=constraints,

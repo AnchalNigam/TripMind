@@ -10,7 +10,7 @@ to an accessible region hub before any stays or activities are sourced.
 Zero hardcoded city names or hardcoded day-length branches are used.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Any
 import json
 
 from tripmind.v2.state import WorkingMemoryState, DayRegionStage, StagingPlan
@@ -22,8 +22,9 @@ from tripmind.core.llm import LLMClient
 class StagingWorker:
     """Worker responsible for geographical accessibility and temporal partitioning."""
 
-    def __init__(self, llm_client: Optional[LLMClient] = None):
+    def __init__(self, llm_client: Optional[LLMClient] = None, mcp_client: Optional[Any] = None):
         self.llm_client = llm_client
+        self.mcp_client = mcp_client
 
     def run(self, state: WorkingMemoryState) -> WorkingMemoryState:
         """Executes regional accessibility analysis and partitions days into hubs."""
@@ -34,13 +35,19 @@ class StagingWorker:
         state.mark_task_running("T1_STAGING")
         state.log_milestone("Milestone 1: Staging", "running", f"Analyzing regional accessibility for {dest} in {month}...")
 
-        # 1. Deterministic tool perception via search_regions
+        # 1. Tool perception via MCP or local function
         tool_input = {"destination": dest, "month": month}
-        region_res: RegionSearchResult = search_regions(destination=dest, month=month)
+        if self.mcp_client:
+            raw_res = self.mcp_client.call_tool_sync("search_regions", tool_input)
+            region_res = RegionSearchResult(**raw_res) if isinstance(raw_res, dict) else RegionSearchResult.model_validate_json(raw_res)
+            tool_label = "search_regions (via MCP Protocol)"
+        else:
+            region_res: RegionSearchResult = search_regions(destination=dest, month=month)
+            tool_label = "search_regions"
         
         state.add_trace_step(
-            thought=f"Executing StagingWorker: Querying regional accessibility and seasonal closures for '{dest}' in month '{month}'.",
-            tool_name="search_regions",
+            thought=f"Executing StagingWorker: Querying regional accessibility and seasonal closures for '{dest}' in month '{month}' (via {tool_label}).",
+            tool_name=tool_label,
             tool_input=tool_input,
             observation=region_res.model_dump_json(indent=2),
         )

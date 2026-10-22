@@ -6,7 +6,7 @@ The FinancialAuditor runs pure deterministic Python arithmetic via the
 `calculate_budget_breakdown` tool, evaluating total costs against the LOCKED budget cap.
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from tripmind.v2.state import WorkingMemoryState
 from tripmind.tools.budget import calculate_budget_breakdown
@@ -16,8 +16,8 @@ from tripmind.schemas.tools import BudgetBreakdownResult
 class FinancialAuditor:
     """Auditor responsible for exact financial calculation and budget compliance check."""
 
-    def __init__(self):
-        pass
+    def __init__(self, mcp_client: Optional[Any] = None):
+        self.mcp_client = mcp_client
 
     def run(self, state: WorkingMemoryState) -> WorkingMemoryState:
         """Computes deterministic budget breakdown and audits against locked cap."""
@@ -62,16 +62,22 @@ class FinancialAuditor:
             "max_budget_cap_inr": budget_cap,
         }
 
-        breakdown: BudgetBreakdownResult = calculate_budget_breakdown(**tool_input)
+        if self.mcp_client:
+            raw_res = self.mcp_client.call_tool_sync("calculate_budget_breakdown", tool_input)
+            breakdown = BudgetBreakdownResult(**raw_res) if isinstance(raw_res, dict) else BudgetBreakdownResult.model_validate_json(raw_res)
+            tool_label = "calculate_budget_breakdown (via MCP Protocol)"
+        else:
+            breakdown: BudgetBreakdownResult = calculate_budget_breakdown(**tool_input)
+            tool_label = "calculate_budget_breakdown"
 
         cap_display = f"₹{budget_cap:,.0f}" if budget_cap else "Unconstrained"
         state.add_trace_step(
             thought=(
                 f"FinancialAuditor: Running deterministic arithmetic for stays (₹{stays_cost:,.0f}), "
                 f"transit (₹{transit_cost:,.0f}), food (₹{food_cost:,.0f}), activities (₹{activities_cost:,.0f}) "
-                f"against budget ceiling: {cap_display}."
+                f"against budget ceiling: {cap_display} (via {tool_label})."
             ),
-            tool_name="calculate_budget_breakdown",
+            tool_name=tool_label,
             tool_input=tool_input,
             observation=breakdown.model_dump_json(indent=2),
         )

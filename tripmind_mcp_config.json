@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "tripmind-travel": {
+      "command": "/Users/anchalnigam/Documents/AI_WORLD/tripMind/.venv/bin/python",
+      "args": [
+        "-m",
+        "tripmind.mcp.server"
+      ],
+      "env": {
+        "PYTHONPATH": "/Users/anchalnigam/Documents/AI_WORLD/tripMind"
+      }
+    }
+  }
+}

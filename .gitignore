@@ -33,3 +33,7 @@ dist/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Logs
+logs/
+*.log

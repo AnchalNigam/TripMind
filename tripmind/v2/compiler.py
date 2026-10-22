@@ -47,8 +47,22 @@ class ItineraryCompiler:
             region = stage.region if stage else state.constraints.destination
 
             # Bind stay
-            stay = self._resolve_stay(cur_day.stay_name, region, state)
-            
+            raw_stay = self._resolve_stay(cur_day.stay_name, region, state)
+            is_departure_day = cur_day.day_number > state.constraints.duration_nights
+            if is_departure_day:
+                stay = AccommodationItem(
+                    name=f"{raw_stay.name} (Checkout)",
+                    region=region,
+                    rating=raw_stay.rating,
+                    price_per_night_inr=0.0,
+                    heating_verified=raw_stay.heating_verified,
+                    amenities=raw_stay.amenities,
+                    couple_suitability="Morning checkout & departure day. No overnight stay required.",
+                    address_or_area=raw_stay.address_or_area,
+                )
+            else:
+                stay = raw_stay
+
             # Bind activities
             activities = self._resolve_activities(cur_day.activity_names, region, state)
             

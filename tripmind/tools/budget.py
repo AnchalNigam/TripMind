@@ -56,7 +56,7 @@ def calculate_budget_breakdown(
         BudgetItem(
             category="Accommodations",
             amount_inr=stays_cost_inr,
-            notes="Heated boutique stays / houseboats.",
+            notes="Heated boutique stays / houseboats across trip nights.",
         ),
         BudgetItem(
             category="Transit & Transfers",
@@ -72,16 +72,6 @@ def calculate_budget_breakdown(
             category="Curated Experiences",
             amount_inr=activities_cost_inr,
             notes="Shikara ride, Gondola Phase 1 tickets, heritage walking tours.",
-        ),
-        BudgetItem(
-            category="Taxes (GST 5%)",
-            amount_inr=gst,
-            notes="Standard Indian tourism & hospitality GST.",
-        ),
-        BudgetItem(
-            category="Emergency Cushion",
-            amount_inr=buffer_amt,
-            notes=f"{emergency_buffer_pct}% contingency cushion for winter weather adjustments.",
         ),
     ]
 

@@ -113,6 +113,7 @@ class WorkingMemoryState(BaseModel):
     critic_notes: List[str] = Field(default_factory=list)
     replan_count: int = 0
     constraint_relaxation_applied: bool = False
+    deliberation_rationales: Dict[str, str] = Field(default_factory=dict)
     
     # Curation and final compilation
     curator_plan: Optional[CuratorSelectionPlan] = None

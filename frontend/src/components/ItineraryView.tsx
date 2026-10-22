@@ -34,16 +34,24 @@ export const ItineraryView: React.FC<ItineraryViewProps> = ({ days }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Stay Card */}
-            {day.stay && day.stay.price_per_night_inr > 0 && (
-              <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-4 space-y-2">
+            {day.stay && (
+              <div className={`border rounded-xl p-4 space-y-2 ${
+                day.stay.price_per_night_inr > 0 ? 'bg-slate-950/70 border-slate-800/80' : 'bg-slate-950/40 border-slate-800/50 opacity-80'
+              }`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold uppercase tracking-wider">
                     <Hotel className="w-4 h-4" />
-                    <span>Accommodation</span>
+                    <span>{day.stay.price_per_night_inr > 0 ? 'Accommodation' : 'Departure Checkout'}</span>
                   </div>
-                  {day.stay.heating_verified && (
-                    <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400">
-                      <Flame className="w-3 h-3" /> Heated Stay Verified
+                  {day.stay.price_per_night_inr > 0 ? (
+                    day.stay.heating_verified && (
+                      <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400">
+                        <Flame className="w-3 h-3" /> Heated Stay Verified
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+                      Checkout Day (No overnight stay)
                     </span>
                   )}
                 </div>
@@ -51,7 +59,12 @@ export const ItineraryView: React.FC<ItineraryViewProps> = ({ days }) => {
                 <div className="text-xs text-slate-400 leading-relaxed">{day.stay.couple_suitability}</div>
                 <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
                   <span>⭐ {day.stay.rating} / 5.0</span>
-                  <span className="font-semibold text-slate-300">₹{day.stay.price_per_night_inr.toLocaleString()} / night</span>
+                  <span className="font-semibold text-slate-300">
+                    {day.stay.price_per_night_inr > 0 
+                      ? `₹${day.stay.price_per_night_inr.toLocaleString()} / night`
+                      : '₹0 (Checkout Day)'
+                    }
+                  </span>
                 </div>
               </div>
             )}

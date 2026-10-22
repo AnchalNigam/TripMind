@@ -428,7 +428,8 @@ def get_accommodations_data(
     matches = []
     for acc in pool:
         if reg_clean in acc.region.lower() or acc.region.lower() in reg_clean:
-            if acc.rating >= min_rating and acc.price_per_night_inr <= max_nightly_rate_inr:
+            rate_ok = (max_nightly_rate_inr is None) or (acc.price_per_night_inr <= max_nightly_rate_inr)
+            if acc.rating >= min_rating and rate_ok:
                 acc_amenities = [a.lower() for a in acc.amenities]
                 has_all_req = True
                 for req in req_amenities_clean:

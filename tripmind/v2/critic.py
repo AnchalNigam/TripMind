@@ -1,28 +1,67 @@
-"""Constraint Critic & Bounded Replanning Engine for Level 2.
+"""Constraint Critic & Dynamic Graph Router for Level 2 (Plan-and-Solve).
 
-AGENTIC AI CONCEPT — Reflection, Critique, & The Constraint Relaxation Policy:
+AGENTIC AI CONCEPT — Reflection, Critique, & Dynamic Routing:
 1. In Level 1, when an unachievable budget (e.g. ₹6,000 for 5 days in winter Kashmir)
    was encountered, the agent thrashed across 10 turns and triggered broken fallback values.
-2. In Level 2, the Critic evaluates candidate solutions against verified constraints.
-   - Fixable overruns: Executes ONE targeted replan (swapping ONLY hotel tiers).
-   - Unachievable requests: Immediately triggers the Constraint Relaxation Policy.
-     It refuses to loop endlessly, maintains safety invariants, and transparently
-     documents the economic reality in audit notes.
+2. In Level 2 DAG, the Critic acts as a Dynamic Graph Router:
+   - Evaluates state invariants (heating, adventure exclusion, financial audit).
+   - If budget overrun is fixable: emits `RoutingDecision(action="replan", target_nodes=["T2_STAYS"])`.
+     The DAG scheduler selectively invalidates ONLY the stay worker, keeping activities and transit intact!
+   - If mathematically unachievable: applies the Constraint Relaxation Policy, transparently
+     documents trade-offs, and routes safely to compilation without looping.
 """
 
 from typing import List, Optional
 
 from tripmind.v2.state import WorkingMemoryState
+from tripmind.v2.graph import RoutingDecision, RoutingAction
 
 
 class CriticAgent:
-    """Evaluates candidate itinerary artifacts against non-negotiable constraints."""
+    """Evaluates candidate itinerary artifacts against non-negotiable constraints and routes graph execution."""
 
     def __init__(self):
         pass
 
-    def evaluate_and_replan(self, state: WorkingMemoryState) -> WorkingMemoryState:
-        """Inspects state, performs targeted replanning if fixable, or applies relaxation."""
+    def route(self, state: WorkingMemoryState) -> RoutingDecision:
+        """Dynamic router evaluated by the DAGScheduler after T5_AUDIT completes."""
+        self.evaluate(state)
+
+        # 1. If critic passed or relaxation already applied -> proceed to compiler
+        if state.critic_passed or state.constraint_relaxation_applied:
+            return RoutingDecision(
+                action=RoutingAction.CONTINUE,
+                reason="Constraints satisfied or relaxation policy applied. Proceeding to compilation."
+            )
+
+        # 2. Check if targeted replan is viable (budget overrun <= 35% and replan_count < 1)
+        audit = state.financial_audit
+        cap = state.constraints.budget_cap_inr
+        if cap and audit and state.replan_count < 1 and audit.total_estimated_inr <= (cap * 1.35):
+            state.replan_count += 1
+            state.add_trace_step(
+                thought=(
+                    f"CriticAgent [Router]: Budget overrun detected (₹{audit.total_estimated_inr:,.0f} vs cap ₹{cap:,.0f}). "
+                    f"Requesting selective DAG replan of node 'T2_STAYS' with budget-tier lodging."
+                ),
+                tool_name="replan_stays",
+            )
+            # Switch stay preference for the next run
+            return RoutingDecision(
+                action=RoutingAction.REPLAN,
+                target_nodes=["T2_STAYS"],
+                reason=f"Selective replan: swap hotel tier to fit cap ₹{cap:,.0f}."
+            )
+
+        # 3. If unachievable or replan budget still exceeded, apply relaxation and continue
+        self._apply_constraint_relaxation(state)
+        return RoutingDecision(
+            action=RoutingAction.CONTINUE,
+            reason="Constraint Relaxation Policy applied; continuing to compilation."
+        )
+
+    def evaluate(self, state: WorkingMemoryState) -> WorkingMemoryState:
+        """Inspects state and verifies heating, negative adventure invariants, and financial viability."""
         state.mark_task_running("T6_CRITIC")
         state.log_milestone("Milestone 4: Critic Review", "running", "Evaluating safety, heating, adventure, and budget constraints...")
 
@@ -61,40 +100,31 @@ class CriticAgent:
             state.critic_passed = True
             state.critic_notes.append(f"Budget compliant: Total ₹{audit.total_estimated_inr:,.0f} <= Cap ₹{state.constraints.budget_cap_inr:,.0f}.")
         else:
-            # Budget overrun detected!
-            # Check if fixable via Targeted Replan (swapping hotel tiers)
-            cap = state.constraints.budget_cap_inr
-            if state.replan_count < 1 and audit.total_estimated_inr <= (cap * 1.35):
-                state.add_trace_step(
-                    thought=(
-                        f"CriticAgent: Budget overrun detected (₹{audit.total_estimated_inr:,.0f} vs cap ₹{cap:,.0f}). "
-                        f"Triggering targeted replan (depth=1) to select tier-2 accommodations."
-                    ),
-                    tool_name="replan_stays",
-                )
-                state.replan_count += 1
-                
-                # Import dynamically to avoid circular dependencies
-                from tripmind.v2.workers.stays import StayWorker
-                from tripmind.v2.auditor import FinancialAuditor
-                
-                StayWorker().run(state, prefer_budget_tier=True)
-                FinancialAuditor().run(state)
-                
-                # Re-check after targeted replan
-                if state.financial_audit and state.financial_audit.is_within_budget:
-                    state.critic_passed = True
-                    note = f"Targeted replan successful: Selected tier-2 stays. New total ₹{state.financial_audit.total_estimated_inr:,.0f} is within cap."
-                    state.critic_notes.append(note)
-                else:
-                    self._apply_constraint_relaxation(state)
-            else:
-                # Mathematically unachievable request
-                self._apply_constraint_relaxation(state)
+            state.critic_passed = False
 
-        summary = f"Critic review complete (Replan count: {state.replan_count}, Relaxation: {state.constraint_relaxation_applied})."
+        summary = f"Critic review complete (Passed: {state.critic_passed}, Notes: {len(state.critic_notes)})."
         state.mark_task_completed("T6_CRITIC", summary=summary)
         state.log_milestone("Milestone 4: Critic Review", "completed", summary)
+        return state
+
+    def evaluate_and_replan(self, state: WorkingMemoryState) -> WorkingMemoryState:
+        """Synchronous wrapper for legacy/direct test invocations."""
+        decision = self.route(state)
+        if decision.action == RoutingAction.REPLAN:
+            # Import dynamically to perform localized replan when invoked directly outside DAGScheduler
+            from tripmind.v2.workers.stays import StayWorker
+            from tripmind.v2.auditor import FinancialAuditor
+            
+            StayWorker().run(state, prefer_budget_tier=True)
+            FinancialAuditor().run(state)
+            
+            # Re-check after targeted replan
+            if state.financial_audit and state.financial_audit.is_within_budget:
+                state.critic_passed = True
+                note = f"Targeted replan successful: Selected tier-2 stays. New total ₹{state.financial_audit.total_estimated_inr:,.0f} is within cap."
+                state.critic_notes.append(note)
+            else:
+                self._apply_constraint_relaxation(state)
 
         return state
 

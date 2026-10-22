@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1896.1284999999998 857.45" width="1896.1284999999998" height="857.45" style="--bg:#1F1F1F;--fg:#CCCCCC;--line:#CCCCCC;--accent:#0078D4;--muted:#CCCCCCCC;--surface:#181818;--border:#CCCCCC;background:var(--bg)">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+  text { font-family: 'Inter', system-ui, sans-serif; }
+  svg {
+    /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
+    --_text:          var(--fg);
+    --_text-sec:      var(--muted, color-mix(in srgb, var(--fg) 60%, var(--bg)));
+    --_text-muted:    var(--muted, color-mix(in srgb, var(--fg) 40%, var(--bg)));
+    --_text-faint:    color-mix(in srgb, var(--fg) 25%, var(--bg));
+    --_line:          var(--line, color-mix(in srgb, var(--fg) 50%, var(--bg)));
+    --_arrow:         var(--accent, color-mix(in srgb, var(--fg) 85%, var(--bg)));
+    --_node-fill:     var(--surface, color-mix(in srgb, var(--fg) 3%, var(--bg)));
+    --_node-stroke:   var(--border, color-mix(in srgb, var(--fg) 20%, var(--bg)));
+    --_group-fill:    var(--bg);
+    --_group-hdr:     color-mix(in srgb, var(--fg) 5%, var(--bg));
+    --_inner-stroke:  color-mix(in srgb, var(--fg) 12%, var(--bg));
+    --_key-badge:     color-mix(in srgb, var(--fg) 10%, var(--bg));
+  }
+</style>
+<defs>
+  <marker id="seq-arrow" markerWidth="8" markerHeight="5" refX="8" refY="2.5" orient="auto-start-reverse">
+    <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" />
+  </marker>
+  <marker id="seq-arrow-open" markerWidth="8" markerHeight="5" refX="8" refY="2.5" orient="auto-start-reverse">
+    <polyline points="0 0, 8 2.5, 0 5" fill="none" stroke="var(--_arrow)" stroke-width="1" />
+  </marker>
+</defs>
+<line class="lifeline" data-actor="User" x1="70" y1="92.45" x2="70" y2="827.45" stroke="var(--_line)" stroke-width="0.75" stroke-dasharray="6 4" />
+<line class="lifeline" data-actor="Frontend" x1="210" y1="70" x2="210" y2="827.45" stroke="var(--_line)" stroke-width="0.75" stroke-dasharray="6 4" />
+<line class="lifeline" data-actor="API" x1="373.611" y1="70" x2="373.611" y2="827.45" stroke="var(--_line)" stroke-width="0.75" stroke-dasharray="6 4" />
+<line class="lifeline" data-actor="Engine" x1="600.948" y1="70" x2="600.948" y2="827.45" stroke="var(--_line)" stroke-width="0.75" stroke-dasharray="6 4" />
+<line class="lifeline" data-actor="DAG" x1="847.5509999999999" y1="70" x2="847.5509999999999" y2="827.45" stroke="var(--_line)" stroke-width="0.75" stroke-dasharray="6 4" />
+<line class="lifeline" data-actor="Worker" x1="1063.4025" y1="70" x2="1063.4025" y2="827.45" stroke="var(--_line)" stroke-width="0.75" stroke-dasharray="6 4" />
+<line class="lifeline" data-actor="MCPClient" x1="1290.369" y1="70" x2="1290.369" y2="827.45" stroke="var(--_line)" stroke-width="0.75" stroke-dasharray="6 4" />
+<line class="lifeline" data-actor="MCPServer" x1="1521.7814999999998" y1="70" x2="1521.7814999999998" y2="827.45" stroke="var(--_line)" stroke-width="0.75" stroke-dasharray="6 4" />
+<line class="lifeline" data-actor="State" x1="1757.6399999999999" y1="70" x2="1757.6399999999999" y2="827.45" stroke="var(--_line)" stroke-width="0.75" stroke-dasharray="6 4" />
+<g class="message" data-from="User" data-to="Frontend" data-label="Click &quot;Plan Trip&quot; (5 days in Kashmir)" data-line-style="solid" data-arrow-head="filled" data-self="false">
+  <line x1="70" y1="112.45" x2="210" y2="112.45" stroke="var(--_line)" stroke-width="1" marker-end="url(#seq-arrow)" />
+  <text x="140" y="102.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">Click &quot;Plan Trip&quot; (5 days in Kashmir)</text>
+</g>
+<g class="message" data-from="Frontend" data-to="API" data-label="POST /api/v2/planner/plan" data-line-style="solid" data-arrow-head="filled" data-self="false">
+  <line x1="210" y1="152.45" x2="373.611" y2="152.45" stroke="var(--_line)" stroke-width="1" marker-end="url(#seq-arrow)" />
+  <text x="291.8055" y="142.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">POST /api/v2/planner/plan</text>
+</g>
+<g class="message" data-from="API" data-to="Engine" data-label="engine.plan(user_query)" data-line-style="solid" data-arrow-head="filled" data-self="false">
+  <line x1="373.611" y1="192.45" x2="600.948" y2="192.45" stroke="var(--_line)" stroke-width="1" marker-end="url(#seq-arrow)" />
+  <text x="487.2795" y="182.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">engine.plan(user_query)</text>
+</g>
+<g class="message" data-from="Engine" data-to="DAG" data-label="scheduler.execute_sync(state)" data-line-style="solid" data-arrow-head="filled" data-self="false">
+  <line x1="600.948" y1="247.45" x2="847.5509999999999" y2="247.45" stroke="var(--_line)" stroke-width="1" marker-end="url(#seq-arrow)" />
+  <text x="724.2494999999999" y="237.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">scheduler.execute_sync(state)</text>
+</g>
+<g class="message" data-from="DAG" data-to="Worker" data-label="Execute T2_STAYS (Parallel Fan-Out)" data-line-style="solid" data-arrow-head="filled" data-self="false">
+  <line x1="847.5509999999999" y1="287.45" x2="1063.4025" y2="287.45" stroke="var(--_line)" stroke-width="1" marker-end="url(#seq-arrow)" />
+  <text x="955.4767499999999" y="277.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">Execute T2_STAYS (Parallel Fan-Out)</text>
+</g>
+<g class="message" data-from="Worker" data-to="MCPClient" data-label="call_tool_sync(&quot;search_accommodations&quot;, tool_input)" data-line-style="solid" data-arrow-head="filled" data-self="false">
+  <line x1="1063.4025" y1="342.45" x2="1290.369" y2="342.45" stroke="var(--_line)" stroke-width="1" marker-end="url(#seq-arrow)" />
+  <text x="1176.88575" y="332.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">call_tool_sync(&quot;search_accommodations&quot;, tool_input)</text>
+</g>
+<g class="message" data-from="MCPClient" data-to="MCPServer" data-label="server.call_tool(&quot;search_accommodations&quot;, args)" data-line-style="solid" data-arrow-head="filled" data-self="false">
+  <line x1="1290.369" y1="382.45" x2="1521.7814999999998" y2="382.45" stroke="var(--_line)" stroke-width="1" marker-end="url(#seq-arrow)" />
+  <text x="1406.0752499999999" y="372.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">server.call_tool(&quot;search_accommodations&quot;, args)</text>
+</g>
+<g class="message" data-from="MCPServer" data-to="MCPClient" data-label="Returns TextContent(JSON hotels)" data-line-style="dashed" data-arrow-head="filled" data-self="false">
+  <line x1="1521.7814999999998" y1="437.45" x2="1290.369" y2="437.45" stroke="var(--_line)" stroke-width="1" stroke-dasharray="6 4" marker-end="url(#seq-arrow)" />
+  <text x="1406.0752499999999" y="427.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">Returns TextContent(JSON hotels)</text>
+</g>
+<g class="message" data-from="MCPClient" data-to="Worker" data-label="Returns parsed Python dict" data-line-style="dashed" data-arrow-head="filled" data-self="false">
+  <line x1="1290.369" y1="477.45" x2="1063.4025" y2="477.45" stroke="var(--_line)" stroke-width="1" stroke-dasharray="6 4" marker-end="url(#seq-arrow)" />
+  <text x="1176.88575" y="467.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">Returns parsed Python dict</text>
+</g>
+<g class="message" data-from="Worker" data-to="State" data-label="Commit selected hotel &amp; deliberation rationale" data-line-style="solid" data-arrow-head="filled" data-self="false">
+  <line x1="1063.4025" y1="532.45" x2="1757.6399999999999" y2="532.45" stroke="var(--_line)" stroke-width="1" marker-end="url(#seq-arrow)" />
+  <text x="1410.5212499999998" y="522.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">Commit selected hotel &amp; deliberation rationale</text>
+</g>
+<g class="message" data-from="Worker" data-to="State" data-label="add_trace_step(tool=&quot;search_accommodations (via MCP Protocol)&quot;)" data-line-style="solid" data-arrow-head="filled" data-self="false">
+  <line x1="1063.4025" y1="572.45" x2="1757.6399999999999" y2="572.45" stroke="var(--_line)" stroke-width="1" marker-end="url(#seq-arrow)" />
+  <text x="1410.5212499999998" y="562.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">add_trace_step(tool=&quot;search_accommodations (via MCP Protocol)&quot;)</text>
+</g>
+<g class="message" data-from="Worker" data-to="DAG" data-label="T2_STAYS Completed" data-line-style="dashed" data-arrow-head="filled" data-self="false">
+  <line x1="1063.4025" y1="612.45" x2="847.5509999999999" y2="612.45" stroke="var(--_line)" stroke-width="1" stroke-dasharray="6 4" marker-end="url(#seq-arrow)" />
+  <text x="955.4767499999999" y="602.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">T2_STAYS Completed</text>
+</g>
+<g class="message" data-from="DAG" data-to="Engine" data-label="Returns final state" data-line-style="dashed" data-arrow-head="filled" data-self="false">
+  <line x1="847.5509999999999" y1="667.45" x2="600.948" y2="667.45" stroke="var(--_line)" stroke-width="1" stroke-dasharray="6 4" marker-end="url(#seq-arrow)" />
+  <text x="724.2494999999999" y="657.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">Returns final state</text>
+</g>
+<g class="message" data-from="Engine" data-to="API" data-label="Returns TripPlanResponse" data-line-style="dashed" data-arrow-head="filled" data-self="false">
+  <line x1="600.948" y1="707.45" x2="373.611" y2="707.45" stroke="var(--_line)" stroke-width="1" stroke-dasharray="6 4" marker-end="url(#seq-arrow)" />
+  <text x="487.2795" y="697.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">Returns TripPlanResponse</text>
+</g>
+<g class="message" data-from="API" data-to="Frontend" data-label="HTTP 200 OK" data-line-style="dashed" data-arrow-head="filled" data-self="false">
+  <line x1="373.611" y1="747.45" x2="210" y2="747.45" stroke="var(--_line)" stroke-width="1" stroke-dasharray="6 4" marker-end="url(#seq-arrow)" />
+  <text x="291.8055" y="737.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">HTTP 200 OK</text>
+</g>
+<g class="message" data-from="Frontend" data-to="User" data-label="Displays verified itinerary &amp; MCP traces!" data-line-style="dashed" data-arrow-head="filled" data-self="false">
+  <line x1="210" y1="787.45" x2="70" y2="787.45" stroke="var(--_line)" stroke-width="1" stroke-dasharray="6 4" marker-end="url(#seq-arrow)" />
+  <text x="140" y="777.45" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">Displays verified itinerary &amp; MCP traces!</text>
+</g>
+<g class="note" data-position="over" data-actors="Engine">
+  <polygon points="412.2990000000001,200.45 783.597,200.45 789.597,206.45 789.597,223.45 412.2990000000001,223.45" fill="var(--bg)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <polygon points="783.597,200.45 789.597,206.45 783.597,206.45" fill="var(--_inner-stroke)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="600.948" y="211.95" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)"><tspan x="600.948" dy="-10.450000000000001">1. Instantiates MCP Client</tspan><tspan x="600.948" dy="14.3">2. Injects client into workers</tspan><tspan x="600.948" dy="14.3">3. Builds AgentGraph</tspan></text>
+</g>
+<g class="note" data-position="over" data-actors="Worker">
+  <polygon points="940.6874999999999,295.45 1180.1174999999998,295.45 1186.1174999999998,301.45 1186.1174999999998,318.45 940.6874999999999,318.45" fill="var(--bg)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <polygon points="1180.1174999999998,295.45 1186.1174999999998,301.45 1180.1174999999998,301.45" fill="var(--_inner-stroke)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="1063.4025" y="306.95" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)"><tspan x="1063.4025" dy="-3.3000000000000007">Perception Phase:</tspan><tspan x="1063.4025" dy="14.3">Needs hotels for &quot;Srinagar&quot;</tspan></text>
+</g>
+<g class="note" data-position="over" data-actors="MCPServer">
+  <polygon points="1380.0584999999999,390.45 1657.5044999999998,390.45 1663.5044999999998,396.45 1663.5044999999998,413.45 1380.0584999999999,413.45" fill="var(--bg)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <polygon points="1657.5044999999998,390.45 1663.5044999999998,396.45 1657.5044999999998,396.45" fill="var(--_inner-stroke)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="1521.7814999999998" y="401.95" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)"><tspan x="1521.7814999999998" dy="-3.3000000000000007">JSON-RPC Execution:</tspan><tspan x="1521.7814999999998" dy="14.3">Runs query in isolated sandbox</tspan></text>
+</g>
+<g class="note" data-position="over" data-actors="Worker">
+  <polygon points="861.6854999999999,485.45 1259.1194999999998,485.45 1265.1194999999998,491.45 1265.1194999999998,508.45 861.6854999999999,508.45" fill="var(--bg)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <polygon points="1259.1194999999998,485.45 1265.1194999999998,491.45 1259.1194999999998,491.45" fill="var(--_inner-stroke)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="1063.4025" y="496.95" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)"><tspan x="1063.4025" dy="-10.450000000000001">Deliberation Phase:</tspan><tspan x="1063.4025" dy="14.3">LLM reasons over candidates,</tspan><tspan x="1063.4025" dy="14.3">heating, &amp; budget headroom</tspan></text>
+</g>
+<g class="note" data-position="over" data-actors="DAG">
+  <polygon points="560.0009999999997,620.45 1129.101,620.45 1135.101,626.45 1135.101,643.45 560.0009999999997,643.45" fill="var(--bg)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <polygon points="1129.101,620.45 1135.101,626.45 1129.101,626.45" fill="var(--_inner-stroke)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="847.5509999999999" y="631.95" font-size="11" text-anchor="middle" font-weight="400" fill="var(--_text-muted)"><tspan x="847.5509999999999" dy="-10.450000000000001">Join Barrier synchronizes T2, T3, T4</tspan><tspan x="847.5509999999999" dy="14.3">Dispatches T5_AUDIT (also via MCP)</tspan><tspan x="847.5509999999999" dy="14.3">Evaluates T6_CRITIC -&gt; T7_COMPILER</tspan></text>
+</g>
+<g class="actor" data-id="User" data-label="User" data-type="actor">
+  <g transform="translate(52,32) scale(1.5)">
+    <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" fill="none" stroke="var(--_line)" stroke-width="0.6666666666666666" />
+    <path d="M15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 8.34315 10.3431 7 12 7C13.6569 7 15 8.34315 15 10Z" fill="none" stroke="var(--_line)" stroke-width="0.6666666666666666" />
+    <path d="M5.62842 18.3563C7.08963 17.0398 9.39997 16 12 16C14.6 16 16.9104 17.0398 18.3716 18.3563" fill="none" stroke="var(--_line)" stroke-width="0.6666666666666666" />
+  </g>
+  <text x="70" y="84" font-size="13" text-anchor="middle" font-weight="500" fill="var(--_text)" dy="4.55">User</text>
+</g>
+<g class="actor" data-id="Frontend" data-label="App.tsx (UI)" data-type="participant">
+  <rect x="160.0505" y="30" width="99.899" height="40" rx="4" ry="4" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="210" y="50" font-size="13" text-anchor="middle" font-weight="500" fill="var(--_text)" dy="4.55">App.tsx (UI)</text>
+</g>
+<g class="actor" data-id="API" data-label="routes.py (FastAPI)" data-type="participant">
+  <rect x="299.9495" y="30" width="147.32299999999998" height="40" rx="4" ry="4" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="373.611" y="50" font-size="13" text-anchor="middle" font-weight="500" fill="var(--_text)" dy="4.55">routes.py (FastAPI)</text>
+</g>
+<g class="actor" data-id="Engine" data-label="engine.py (PlanAndSolveEngine)" data-type="participant">
+  <rect x="487.27250000000004" y="30" width="227.35099999999994" height="40" rx="4" ry="4" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="600.948" y="50" font-size="13" text-anchor="middle" font-weight="500" fill="var(--_text)" dy="4.55">engine.py (PlanAndSolveEngine)</text>
+</g>
+<g class="actor" data-id="DAG" data-label="graph.py (DAGScheduler)" data-type="participant">
+  <rect x="754.6234999999999" y="30" width="185.85499999999993" height="40" rx="4" ry="4" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="847.5509999999999" y="50" font-size="13" text-anchor="middle" font-weight="500" fill="var(--_text)" dy="4.55">graph.py (DAGScheduler)</text>
+</g>
+<g class="actor" data-id="Worker" data-label="stays.py (StayWorker)" data-type="participant">
+  <rect x="980.4784999999999" y="30" width="165.84799999999998" height="40" rx="4" ry="4" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="1063.4025" y="50" font-size="13" text-anchor="middle" font-weight="500" fill="var(--_text)" dy="4.55">stays.py (StayWorker)</text>
+</g>
+<g class="actor" data-id="MCPClient" data-label="client.py (TripMindMCPClient)" data-type="participant">
+  <rect x="1186.3265" y="30" width="208.08499999999995" height="40" rx="4" ry="4" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="1290.369" y="50" font-size="13" text-anchor="middle" font-weight="500" fill="var(--_text)" dy="4.55">client.py (TripMindMCPClient)</text>
+</g>
+<g class="actor" data-id="MCPServer" data-label="server.py (MCPServer)" data-type="participant">
+  <rect x="1434.4115" y="30" width="174.73999999999998" height="40" rx="4" ry="4" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="1521.7814999999998" y="50" font-size="13" text-anchor="middle" font-weight="500" fill="var(--_text)" dy="4.55">server.py (MCPServer)</text>
+</g>
+<g class="actor" data-id="State" data-label="state.py (WorkingMemoryState)" data-type="participant">
+  <rect x="1649.1515" y="30" width="216.97699999999995" height="40" rx="4" ry="4" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="1757.6399999999999" y="50" font-size="13" text-anchor="middle" font-weight="500" fill="var(--_text)" dy="4.55">state.py (WorkingMemoryState)</text>
+</g>
+</svg>
